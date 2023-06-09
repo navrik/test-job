@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{- include "care.name" . | nindent 4 }}-cmsadmin
+  labels:
+    {{- include "cmsadmin.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.cmsadmin.type }}
+  ports:
+    - port: {{ .Values.service.cmsadmin.port }}
+      targetPort: {{ add 4 (.Values.back.port) }}
+      protocol: TCP
+      name: http-cmsadmin
+  selector:
+    {{- include "cmsadmin.selectorLabels" . | nindent 4 }}

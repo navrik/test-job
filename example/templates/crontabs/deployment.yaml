@@ -1,0 +1,86 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{- include "care.name" . | nindent 4 }}-crontabs
+  labels:
+    {{- include "crontabs.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount.crontabs }}
+  selector:
+    matchLabels:
+      {{- include "crontabs.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+      {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "crontabs.labels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "care.serviceAccountName" . }}
+      containers:
+        - name: {{ include "care.name" . }}-crontabs
+          image: "{{ .Values.back.image }}:{{ .Values.back.imageTag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.back.imagePullPolicy }}
+          command:
+            - /usr/local/bin/go-crond
+          args:
+            - --allow-unprivileged
+            - --include=/etc/cron.d
+            - --server.bind=:8080
+            - --server.metrics
+            - --log.json
+          env:
+            - name: MODE
+              value: {{ .Values.MODE }}
+            {{- if .Values.proxyBalancer.enabled }}
+            - name: https_proxy
+              value: http://proxybalancer:3127
+            {{- end }}
+            {{- range $back_var, $back_val := .Values.back.env }}
+            - name: {{ $back_var }}
+              value: "{{ $back_val }}"
+            {{- end }}
+          ports:
+            - name: http-go-crond
+              containerPort: 8080
+              protocol: TCP
+          livenessProbe:
+            tcpSocket:
+              port: 8080
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+          resources:
+            {{- toYaml .Values.resources.crontabs | nindent 12 }}
+          volumeMounts:
+            - name: crontabs-config-volume
+              mountPath: /etc/cron.d
+            # - name: app-keys-volume
+            #   mountPath: /srv/kopa/keys
+            #   readOnly: true
+      volumes:
+        - name: crontabs-config-volume
+          configMap:
+            name: "{{ include "care.name" . }}-crontabs"
+        # - name: app-keys-volume
+        #   secret:
+        #     secretName: "{{ include "care.name" . }}-app-keys"
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

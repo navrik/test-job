@@ -1,0 +1,40 @@
+
+imageRepository: "123123.dkr.ecr.us-east-1.amazonaws.com"
+
+MODE: stage
+
+back:
+  image: "123123.dkr.ecr.us-east-1.amazonaws.com/kopa-backend"
+  env:
+    CMS_BASE_URL: https://example.com
+    REDIS_DSN: redis://example.com:6379/10
+    APP_HOST: https://example.com.health
+    RECOMMENDATIONS_REDIS_DSN: redis://example.com:6379/11
+    AUTH_SERVICE_URL: https://example.com
+    AUTH_SERVICE_CLIENT_ID: 'someipikey'
+    EXT_PARTNER_SERVICE_URL: https://example.com
+    EXT_CONNECT_SERVICE_URL: https://example.com
+    CONSENT_SERVICE_BASE_URL: http://example.com:10005
+    SERVICE_RECENG_HOST: ''
+    SERVICE_COMPASS_HOST: http://example.com:9091
+    SERVICE_HAPPIFY_HOST: http://example.com:5000
+    SERVICE_EMAIL_HOST: http://example.com:9070
+    SERVICE_TAGS_HOST: http://example.com:9000
+    SERVICE_HAPPIFIERS_HOST: http://example.com:9000
+    HAPPIFIERS_STATIC_URL: https://example.com
+    AWS_HOST_NAME: s3.us-east-1.amazonaws.com
+    S3_USER_UPLOADS_BUCKET_NAME: example.com
+    S3_HOST: https://example.com/
+    S3_PUBLIC_URL: https://twexample.com/
+    MAIL_COMPLAIN_EMAILS: support@example.com
+    SENTRY_ENVIRONMENT: ""
+
+# Role created via TF
+serviceAccount:
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::123123:role/example.com
+
+ingressIstio:
+  domain: twill-qa.health
+  hosts:
+    - "example.com"

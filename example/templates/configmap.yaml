@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ca-cert
+data:
+  ca-certificates.crt: |-
+    {{ .Files.Get "cacert.crt" | nindent 4 }}
+

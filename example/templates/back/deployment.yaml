@@ -1,0 +1,100 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{- include "care.name" . | nindent 4 }}-back
+  labels:
+    {{- include "back.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount.back }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "back.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+      {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "back.labels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "care.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ include "care.name" . }}-back
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.back.image }}:{{ .Values.back.imageTag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.back.imagePullPolicy }}
+          env:
+            - name: MODE
+              value: {{ .Values.MODE }}
+            {{- if .Values.proxyBalancer.enabled }}
+            - name: https_proxy
+              value: http://proxybalancer:3127
+            {{- end }}
+            {{- range $back_var, $back_val := .Values.back.env }}
+            - name: {{ $back_var }}
+              value: "{{ $back_val }}"
+            {{- end }}
+          ports:
+            - name: http-back
+              containerPort: {{ .Values.back.port }}
+              protocol: TCP
+          livenessProbe:
+            tcpSocket:
+              port: {{ .Values.back.port }}
+            initialDelaySeconds: 30
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /api/v1/debug/status_code/
+              port: {{ .Values.back.port }}
+            initialDelaySeconds: 60
+            periodSeconds: 15
+            timeoutSeconds: 15
+          command: ["uvicorn"]
+          args:
+            - "server:app"
+            - "--host=0.0.0.0"
+            - "--port={{ .Values.back.port }}"
+            - "--log-level={{ .Values.back.logLevel }}"
+          resources:
+            {{- toYaml .Values.resources.back | nindent 12 }}
+          volumeMounts:
+            - name: ca-certificates
+              mountPath: /etc/ssl/certs/ca-certificates.crt
+              subPath: ca-certificates.crt
+            - name: ca-certificates
+              mountPath: /opt/venv/lib/python3.8/site-packages/certifi/cacert.pem
+              subPath: ca-certificates.crt
+          #   - name: app-keys-volume
+          #     mountPath: /srv/kopa/keys
+          #     readOnly: true
+      volumes:
+        - name: ca-certificates
+          configMap:
+            name: ca-cert
+            defaultMode: 420
+      #   - name: app-keys-volume
+      #     secret:
+      #       secretName: "{{ include "care.name" . }}-app-keys"
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

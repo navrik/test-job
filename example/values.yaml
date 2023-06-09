@@ -1,0 +1,125 @@
+# Default values for care.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+MODE: prod
+
+replicaCount:
+  back: 1
+  cmsadmin: 1
+  crontabs: 1
+
+imageRepository: "example.com"
+
+back:
+  image: "example.com"
+  imageTag: "latest"
+  imagePullPolicy: IfNotPresent
+  logLevel: info
+  port: 9090
+  env:
+    AWS_ACCESS_KEY: ""
+    AWS_SECRET_KEY: ""
+
+
+nameOverride: "care"
+fullnameOverride: ""
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::123123
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: "care-back"
+
+podAnnotations:
+
+podSecurityContext: {}
+
+securityContext: {}
+
+service:
+  front:
+    type: ClusterIP
+    port: 80
+  back:
+    type: ClusterIP
+    port: 9090
+  cmsadmin:
+    type: ClusterIP
+    port: 9094
+  static:
+    type: ClusterIP
+    port: 9080
+    
+ingress:
+  enabled: false
+
+ingressIstio:
+  domain: stage-twill.health
+  hosts:
+    - "example.com"
+    - "*.example.com"
+  ingress_policy_rules_deny:
+    - to:
+      - operation:
+          paths: ["/admin/*"]
+      from:
+      - source:
+          notIpBlocks:
+            - "*.*.*.*/32" # b2b-us-prod-nat-a
+            - "*.*.*.*/32" # b2b-us-prod-nat-b
+            - "*.*.*.*/32" # b2c-prod-nat-a
+            - "*.*.*.*/32"    # b2c-prod-nat-b
+
+proxyBalancer:
+  enabled: false
+  externalName: ""
+  ips: [] # for future uses
+
+resources:
+  back:
+    limits:
+      cpu: 2000m
+      memory: 4096Mi
+    requests:
+      cpu: 500m
+      memory: 2048Mi
+  crontabs:
+    limits:
+      cpu: 2000m
+      memory: 8192Mi
+    requests:
+      cpu: 500m
+      memory: 2048Mi
+  cmsadmin:
+    limits:
+      cpu: 2000m
+      memory: 4096Mi
+    requests:
+      cpu: 500m
+      memory: 2048Mi
+
+autoscaling:
+  enabled: false
+  back:
+    minReplicas: 1
+    maxReplicas: 6
+    targetCPUUtilizationPercentage: 80
+  cmsadmin:
+    minReplicas: 1
+    maxReplicas: 2
+    targetCPUUtilizationPercentage: 80
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+dbMaster:
+  username: ""
+  password: ""

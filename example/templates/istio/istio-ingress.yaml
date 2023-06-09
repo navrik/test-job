@@ -1,0 +1,90 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  name: gateway-{{ include "care.name" . }}
+spec:
+  selector:
+    istio: ingressgateway-{{ .Release.Namespace }}
+  servers:
+  - port:
+      number: 80
+      name: http
+      protocol: HTTP
+    hosts:
+      {{- range .Values.ingressIstio.hosts }}
+      - {{ . | quote }}
+      {{- end }}
+    tls:
+      httpsRedirect: true
+  - port:
+      number: 443
+      name: https
+      protocol: HTTPS
+    hosts:
+      {{- range .Values.ingressIstio.hosts }}
+      - {{ . | quote }}
+      {{- end }}
+    tls:
+      mode: SIMPLE
+      credentialName: {{ .Values.ingressIstio.domain }}
+      minProtocolVersion: TLSV1_2
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: virtualservice-{{ include "care.name" . }}
+spec:
+  hosts:
+    {{- range .Values.ingressIstio.hosts }}
+    - {{ . | quote }}
+    {{- end }}
+  gateways:
+    - gateway-{{ include "care.name" . }}
+  http:
+    - name: api
+      match:
+      - uri:
+          prefix: /api/
+      route:
+      - destination:
+          port:
+            number: {{ .Values.service.back.port }}
+          host: {{ include "care.name" . }}-back
+    - name: dist
+      match:
+      - uri:
+          prefix: /dist/
+      route:
+      - destination:
+          port:
+            number: {{ .Values.service.static.port }}
+          host: {{ include "care.name" . }}-static
+    - name: cmsadmin
+      match:
+      - uri:
+          prefix: /admin/
+      route:
+      - destination:
+          port:
+            number: {{ .Values.service.cmsadmin.port }}
+          host: {{ include "care.name" . }}-cmsadmin
+    - name: front
+      route:
+      - destination:
+          port:
+            number: {{ .Values.service.front.port }}
+          host: {{ include "care.name" . }}-front
+---
+{{- if .Values.ingressIstio.ingress_policy_rules_deny -}}
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: ingress-policy-{{ .Release.Namespace }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    matchLabels:
+      app: istio-ingressgateway-{{ .Release.Namespace }}
+  action: DENY
+  rules: {{ .Values.ingressIstio.ingress_policy_rules_deny | toJson }}
+{{- end }}

@@ -1,0 +1,28 @@
+{{- if .Values.autoscaling.enabled }}
+apiVersion: autoscaling/v2beta1
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "care.name" . }}-cmsadmin
+  labels:
+    {{- include "cmsadmin.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{- include "care.name" . }}-cmsadmin
+  minReplicas: {{ .Values.autoscaling.cmsadmin.minReplicas }}
+  maxReplicas: {{ .Values.autoscaling.cmsadmin.maxReplicas }}
+  metrics:
+    {{- if .Values.autoscaling.cmsadmin.targetCPUUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: cpu
+        targetAverageUtilization: {{ .Values.autoscaling.cmsadmin.targetCPUUtilizationPercentage }}
+    {{- end }}
+    {{- if .Values.autoscaling.cmsadmin.targetMemoryUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: memory
+        targetAverageUtilization: {{ .Values.autoscaling.cmsadmin.targetMemoryUtilizationPercentage }}
+    {{- end }}
+{{- end }}

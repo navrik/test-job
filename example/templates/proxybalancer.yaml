@@ -1,0 +1,11 @@
+{{- if .Values.proxyBalancer.enabled }}
+{{- if .Values.proxyBalancer.externalName }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: proxybalancer
+spec:
+  type: ExternalName
+  externalName: {{ .Values.proxyBalancer.externalName }}
+{{- end }}
+{{- end }}

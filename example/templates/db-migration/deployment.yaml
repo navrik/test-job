@@ -1,0 +1,49 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{- include "care.name" . | nindent 4 }}-back-db-migration-job
+  labels:
+    {{- include "back.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": pre-upgrade
+    "helm.sh/hook-weight": "2"
+spec:
+  backoffLimit: 0
+  template:
+    metadata:
+      name: "{{- include "care.name" . }}-back-db-migration-job"
+      labels:
+        app.kubernetes.io/instance: {{ .Release.Name | quote }}
+        helm.sh/chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+        sidecar.istio.io/inject: "false"
+        db-migrate: "{{- include "care.name" . }}-back"
+    spec:
+      restartPolicy: Never
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "care.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: db-migrate-up
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.back.image }}:{{ .Values.back.imageTag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.back.imagePullPolicy }}
+          command: ["alembic"]
+          args:
+            - upgrade
+            - head
+          env:
+            - name: MODE
+              value: {{ .Values.MODE }}
+            {{- if .Values.proxyBalancer.enabled }}
+            - name: https_proxy
+              value: http://proxybalancer:3127
+            {{- end }}
+            {{- range $back_var, $back_val := .Values.back.env }}
+            - name: {{ $back_var }}
+              value: "{{ $back_val }}"
+            {{- end }}
